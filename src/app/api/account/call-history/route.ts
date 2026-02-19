@@ -60,13 +60,13 @@ export async function GET(req: Request) {
     const filesByCall: Record<string, typeof fileTransfers> = {};
 
     chatMessages.forEach((msg) => {
-      if (!chatsByCall[msg.callId]) chatsByCall[msg.callId] = [];
-      chatsByCall[msg.callId].push(msg);
+      const chatList = (chatsByCall[msg.callId] ??= []);
+      chatList.push(msg);
     });
 
     fileTransfers.forEach((file) => {
-      if (!filesByCall[file.callId]) filesByCall[file.callId] = [];
-      filesByCall[file.callId].push(file);
+      const fileList = (filesByCall[file.callId] ??= []);
+      fileList.push(file);
     });
 
     // Prepare response with all call data

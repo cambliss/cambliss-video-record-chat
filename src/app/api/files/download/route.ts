@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     const fileBuffer = await readFile(fullPath);
     const fileName = path.basename(fullPath);
 
-    return new NextResponse(fileBuffer, {
+    return new NextResponse(new Uint8Array(fileBuffer), {
       headers: {
         "Content-Disposition": `attachment; filename="${fileName}"`,
         "Content-Type": "application/octet-stream",
