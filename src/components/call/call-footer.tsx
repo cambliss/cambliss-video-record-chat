@@ -50,38 +50,42 @@ export default function CallFooter() {
   // 🎥 Update recording state when it changes
   React.useEffect(() => {
     const currentlyRecording = recordingState.browser?.running || recordingState.server?.running || false;
+    const hasError = recordingState.browser?.error || recordingState.server?.error;
     
     console.log('Recording state update:', {
       browser: recordingState.browser?.running,
       server: recordingState.server?.running,
       currentlyRecording,
-      isRecording,
-      error: recordingState.browser?.error || recordingState.server?.error
+      localIsRecording: isRecording,
+      error: hasError
     });
     
-    // Check for recording errors
-    const hasError = recordingState.browser?.error || recordingState.server?.error;
-    
-    if (hasError && isRecording) {
-      // Recording failed, reset state
+    // If there's an error, stop recording
+    if (hasError) {
       console.error('Recording error detected:', hasError);
-      setIsRecording(false);
-      setRecordingStartTime(undefined);
+      if (isRecording) {
+        setIsRecording(false);
+        setRecordingStartTime(undefined);
+      }
+      return;
     }
     
-    // Always sync with HMS recording state as source of truth
-    setIsRecording(currentlyRecording);
+    // Sync local state with HMS (source of truth)
+    if (currentlyRecording !== isRecording) {
+      console.log(`Syncing recording state: ${isRecording} -> ${currentlyRecording}`);
+      setIsRecording(currentlyRecording);
+    }
     
-    // If recording is running and we don't have a start time, set it
+    // Manage recording start time
     if (currentlyRecording && !recordingStartTime) {
-      setRecordingStartTime(new Date());
-    }
-    
-    // If recording stopped, clear the start time
-    if (!currentlyRecording && recordingStartTime) {
+      const startTime = new Date();
+      console.log('Setting recording start time:', startTime);
+      setRecordingStartTime(startTime);
+    } else if (!currentlyRecording && recordingStartTime) {
+      console.log('Clearing recording start time');
       setRecordingStartTime(undefined);
     }
-  }, [recordingState, recordingStartTime, isRecording]);
+  }, [recordingState]);
 
   // 🔁 Handle screen share toggle directly on click
   const handleToggleScreenShare = async () => {
@@ -129,8 +133,9 @@ export default function CallFooter() {
     
     console.log('Toggle recording clicked:', {
       currentlyRecording,
-      isRecording,
-      recordingState
+      localIsRecording: isRecording,
+      recordingState,
+      startedAt: recordingStartTime
     });
     
     try {
@@ -138,13 +143,14 @@ export default function CallFooter() {
         // Stop recording
         console.log('Stopping recording...');
         await actions.stopRTMPAndRecording();
-        setIsRecording(false);
-        setRecordingStartTime(undefined);
+        
         toast({
           title: "Recording stopped",
           description: "The recording has been stopped successfully.",
           variant: "default",
         });
+        
+        console.log('Recording stopped successfully');
       } else {
         // Check if running on localhost
         const baseUrl = window.location.origin;
@@ -163,15 +169,17 @@ export default function CallFooter() {
         console.log('Starting recording...');
         const meetingURL = `${baseUrl}/call/${roomId}`;
         
+        console.log('Recording config:', {
+          meetingURL,
+          rtmpURLs: [],
+          record: true
+        });
+        
         await actions.startRTMPOrRecording({
           meetingURL,
           rtmpURLs: [], // Empty for recording only, not streaming
           record: true,
         });
-        
-        const startTime = new Date();
-        setIsRecording(true);
-        setRecordingStartTime(startTime);
         
         toast({
           title: "Recording started",
@@ -179,7 +187,7 @@ export default function CallFooter() {
           variant: "default",
         });
         
-        console.log('Recording started at:', startTime);
+        console.log('Recording started successfully, HMS will update state');
       }
     } catch (error) {
       console.error("Recording error:", error);
