@@ -231,7 +231,8 @@ export default function CallFooter() {
       const isPermissionError = errorMessage.includes("does not have required permission");
       const isNotFoundError = errorMessage.includes("does not exist") || 
                              errorMessage.includes("not found") ||
-                             errorMessage.includes("Recording not found");
+                             errorMessage.includes("Recording not found") ||
+                             errorMessage.includes("No stream running");
       
       // If recording already started on HMS, sync local state with server
       if (isAlreadyStartedError) {
