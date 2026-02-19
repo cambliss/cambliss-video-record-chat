@@ -7,25 +7,34 @@ import Pusher from "pusher";
 // Lazy initialization to avoid errors if Pusher env vars are not set
 let pusherInstance: Pusher | null = null;
 
+function hasPusherCredentials() {
+  return !!(
+    process.env.PUSHER_APP_ID &&
+    process.env.PUSHER_KEY &&
+    process.env.PUSHER_SECRET &&
+    process.env.NEXT_PUBLIC_PUSHER_CLUSTER
+  );
+}
+
 export function getPusher(): Pusher {
   if (!pusherInstance) {
+    const appId = process.env.PUSHER_APP_ID;
+    const key = process.env.PUSHER_KEY;
+    const secret = process.env.PUSHER_SECRET;
+    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+
     // Check if  Pusher credentials are available
-    if (
-      !process.env.PUSHER_APP_ID ||
-      !process.env.PUSHER_KEY ||
-      !process.env.PUSHER_SECRET ||
-      !process.env.NEXT_PUBLIC_PUSHER_CLUSTER
-    ) {
+    if (!appId || !key || !secret || !cluster) {
       throw new Error(
         "Pusher credentials not found. Please set PUSHER_APP_ID, PUSHER_KEY, PUSHER_SECRET, and NEXT_PUBLIC_PUSHER_CLUSTER in your environment variables."
       );
     }
 
     pusherInstance = new Pusher({
-      appId: process.env.PUSHER_APP_ID,
-      key: process.env.PUSHER_KEY,
-      secret: process.env.PUSHER_SECRET,
-      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER,
+      appId,
+      key,
+      secret,
+      cluster,
       useTLS: true,
     });
   }
@@ -40,6 +49,10 @@ export async function triggerPusherEvent(
   data: any
 ) {
   try {
+    if (!hasPusherCredentials()) {
+      return false;
+    }
+
     const pusher = getPusher();
     await pusher.trigger(channel, event, data);
     return true;

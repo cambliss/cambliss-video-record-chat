@@ -6,14 +6,6 @@ import { prisma } from "~/server/db";
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-
-    if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     const body = await req.json();
     const { callId, senderName, senderEmail, message, replyToId } = body;
 
@@ -21,6 +13,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
+      );
+    }
+
+    const roomIdCookie = req.cookies.get("room-id")?.value;
+    const isAuthorized = !!session || roomIdCookie === callId;
+
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
       );
     }
 

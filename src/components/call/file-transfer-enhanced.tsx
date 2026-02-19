@@ -50,6 +50,7 @@ export function FileTransferEnhanced({ callId, roomId }: FileTransferEnhancedPro
 
   useEffect(() => {
     fetchFiles();
+    let interval: ReturnType<typeof setInterval> | null = null;
 
     // Subscribe to real-time updates
     try {
@@ -62,17 +63,20 @@ export function FileTransferEnhanced({ callId, roomId }: FileTransferEnhancedPro
             description: `${data.senderName} shared ${data.fileName}`,
           });
         });
+      } else {
+        interval = setInterval(fetchFiles, 3000);
       }
     } catch (error) {
       // Fallback to polling
-      const interval = setInterval(fetchFiles, 3000);
-      return () => {
-        clearInterval(interval);
-        unsubscribeFromCall(callId);
-      };
+      interval = setInterval(fetchFiles, 3000);
     }
 
-    return () => unsubscribeFromCall(callId);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+      unsubscribeFromCall(callId);
+    };
   }, [callId]);
 
   const handleFileSelect = () => {

@@ -7,13 +7,6 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     const { searchParams } = new URL(req.url);
     const callId = searchParams.get("callId");
 
@@ -21,6 +14,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(
         { error: "Call ID is required" },
         { status: 400 }
+      );
+    }
+
+    const roomIdCookie = req.cookies.get("room-id")?.value;
+    const isAuthorized = !!session || roomIdCookie === callId;
+
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
       );
     }
 

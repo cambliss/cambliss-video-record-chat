@@ -12,13 +12,6 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const callId = formData.get("callId") as string;
@@ -30,6 +23,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "File and callId are required" },
         { status: 400 }
+      );
+    }
+
+    const roomIdCookie = req.cookies.get("room-id")?.value;
+    const isAuthorized = !!session || roomIdCookie === callId || roomId === callId;
+
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
       );
     }
 

@@ -10,7 +10,10 @@ export async function GET(
   try {
     const session = await getServerSession(authOptions);
 
-    if (!session) {
+    const roomIdCookie = req.cookies.get("room-id")?.value;
+    const isAuthorized = !!session || roomIdCookie === params.callId;
+
+    if (!isAuthorized) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
