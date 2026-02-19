@@ -5,6 +5,7 @@ import { prisma } from "~/server/db";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { existsSync } from "fs";
+import { triggerPusherEvent, getCallChannel, PUSHER_EVENTS } from "~/lib/pusher-server";
 
 export const runtime = "nodejs";
 
@@ -67,10 +68,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // NOTE: File is now available to all participants in the call
-    // The FileTransfer component polls the API every 3 seconds to fetch new files
-    // For instant updates, consider implementing WebSocket/Pusher notifications:
-    // await pusher.trigger(`call-${callId}`, 'file-uploaded', fileTransfer);
+    // Trigger Pusher event for real-time updates to all participants
+    const channelName = getCallChannel(callId);
+    const eventTriggered = await triggerPusherEvent(
+      channelName,
+      PUSHER_EVENTS.FILE_UPLOADED,
+      fileTransfer
+    );
+    
+    if (eventTriggered) {
+      console.log(`File upload broadcasted via Pusher to ${channelName}`);
+    } else {
+      console.log('Pusher not configured, relying on polling for real-time updates');
+    }
 
     return NextResponse.json({
       success: true,

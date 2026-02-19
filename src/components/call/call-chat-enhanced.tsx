@@ -72,12 +72,16 @@ export function CallChatEnhanced({ callId, roomId }: CallChatEnhancedProps) {
 
   useEffect(() => {
     fetchMessages();
+    let interval: ReturnType<typeof setInterval> | null = null;
 
     // Subscribe to real-time updates
     try {
       const channel = subscribeToCal(callId);
       if (channel) {
+        console.log('Chat: Pusher channel connected, binding events');
+        
         channel.bind("chat-message", (data: ChatMessage) => {
+          console.log('Chat: Received new message via Pusher', data);
           setMessages((prev) => [...prev, data]);
           scrollToBottom();
         });
@@ -119,17 +123,23 @@ export function CallChatEnhanced({ callId, roomId }: CallChatEnhancedProps) {
         channel.bind("typing-stop", ({ userName }: { userName: string }) => {
           setIsTyping((prev) => prev.filter((name) => name !== userName));
         });
+      } else {
+        // Pusher not available, use polling
+        console.log('Chat: Pusher channel not available, using polling fallback');
+        interval = setInterval(fetchMessages, 3000);
       }
     } catch (error) {
-      // Fallback to polling
-      const interval = setInterval(fetchMessages, 3000);
-      return () => {
-        clearInterval(interval);
-        unsubscribeFromCall(callId);
-      };
+      // Fallback to polling on error
+      console.log('Chat: Pusher subscription failed, using polling fallback', error);
+      interval = setInterval(fetchMessages, 3000);
     }
 
-    return () => unsubscribeFromCall(callId);
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+      unsubscribeFromCall(callId);
+    };
   }, [callId]);
 
   const handleTyping = () => {

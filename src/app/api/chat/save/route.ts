@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "~/server/auth";
 import { prisma } from "~/server/db";
+import { triggerPusherEvent, getCallChannel, PUSHER_EVENTS } from "~/lib/pusher-server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -46,6 +47,20 @@ export async function POST(req: NextRequest) {
         },
       },
     });
+
+    // Trigger Pusher event for real-time updates to all participants
+    const channelName = getCallChannel(callId);
+    const eventTriggered = await triggerPusherEvent(
+      channelName,
+      PUSHER_EVENTS.CHAT_MESSAGE,
+      chatMessage
+    );
+    
+    if (eventTriggered) {
+      console.log(`Chat message broadcasted via Pusher to ${channelName}`);
+    } else {
+      console.log('Pusher not configured, relying on polling for real-time updates');
+    }
 
     return NextResponse.json({ 
       success: true,

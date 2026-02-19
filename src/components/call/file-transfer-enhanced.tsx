@@ -56,7 +56,10 @@ export function FileTransferEnhanced({ callId, roomId }: FileTransferEnhancedPro
     try {
       const channel = subscribeToCal(callId);
       if (channel) {
+        console.log('File Transfer: Pusher channel connected, binding events');
+        
         channel.bind("file-uploaded", (data: FileItem) => {
+          console.log('File Transfer: Received new file via Pusher', data);
           setFiles((prev) => [data, ...prev]);
           toast({
             title: "New file shared",
@@ -64,10 +67,12 @@ export function FileTransferEnhanced({ callId, roomId }: FileTransferEnhancedPro
           });
         });
       } else {
+        console.log('File Transfer: Pusher channel not available, using polling fallback');
         interval = setInterval(fetchFiles, 3000);
       }
     } catch (error) {
       // Fallback to polling
+      console.log('File Transfer: Pusher subscription failed, using polling fallback', error);
       interval = setInterval(fetchFiles, 3000);
     }
 
