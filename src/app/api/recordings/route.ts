@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "~/server/auth";
+import { generateManagementToken } from "~/server/management-token";
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,14 +14,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const managementToken = process.env.HMS_MANAGEMENT_TOKEN;
-    
-    if (!managementToken) {
-      return NextResponse.json(
-        { error: "HMS_MANAGEMENT_TOKEN not configured" },
-        { status: 500 }
-      );
-    }
+    // Generate management token dynamically
+    const managementToken = await generateManagementToken();
 
     // Fetch recordings from 100ms API
     const response = await fetch(
