@@ -22,11 +22,20 @@ interface Recording {
   }>;
 }
 
+interface RecordingLink {
+  id: string;
+  type: string;
+  url: string;
+  valid_till?: string;
+}
+
 export default function RecordingsList() {
   const [recordings, setRecordings] = React.useState<Recording[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [playingVideo, setPlayingVideo] = React.useState<string | null>(null);
+  const [fetchingLink, setFetchingLink] = React.useState<string | null>(null);
+  const [recordingLinks, setRecordingLinks] = React.useState<Record<string, RecordingLink[]>>({});
 
   React.useEffect(() => {
     fetchRecordings();
@@ -49,6 +58,36 @@ export default function RecordingsList() {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch fresh recording links from 100ms API
+  const fetchRecordingLink = async (recordingId: string): Promise<RecordingLink[]> => {
+    try {
+      setFetchingLink(recordingId);
+      const response = await fetch(`/api/recordings/link?recordingId=${recordingId}`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch recording links");
+      }
+
+      const data = await response.json();
+      const links = (data.data || data.links || [data]) as RecordingLink[];
+      
+      // Store the links with validity information
+      setRecordingLinks((prev) => ({
+        ...prev,
+        [recordingId]: links,
+      }));
+
+      return links;
+    } catch (err) {
+      console.error("Error fetching recording link:", err);
+      throw err;
+    } finally {
+      setFetchingLink(null);
     }
   };
 
@@ -77,14 +116,40 @@ export default function RecordingsList() {
     return new Date(dateString).toLocaleString();
   };
 
-  const downloadRecording = (url: string, recordingId: string) => {
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `recording-${recordingId}.mp4`;
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const downloadRecording = async (recordingId: string, assetType: string) => {
+    try {
+      // Fetch fresh link before downloading
+      let links: RecordingLink[] | undefined = recordingLinks[recordingId];
+      if (!links) {
+        links = await fetchRecordingLink(recordingId);
+      }
+
+      if (!links || links.length === 0) {
+        console.error("No recording links available");
+        return;
+      }
+
+      // Find the correct asset link
+      const assetLink = links.find(
+        (link: RecordingLink) => link.type === assetType || link.id === assetType
+      );
+
+      if (!assetLink || !assetLink.url) {
+        console.error("No download URL available");
+        return;
+      }
+
+      // Open in new tab or download
+      const link = document.createElement("a");
+      link.href = assetLink.url;
+      link.download = `recording-${recordingId}-${assetType}.mp4`;
+      link.target = "_blank";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Error downloading recording:", err);
+    }
   };
 
   if (loading) {
@@ -174,14 +239,34 @@ export default function RecordingsList() {
                     {/* Video Player */}
                     {playingVideo === recording.id ? (
                       <div className="rounded-lg overflow-hidden bg-black">
-                        <video
-                          controls
-                          autoPlay
-                          className="w-full max-h-96"
-                          src={recording.recording_assets[0]?.url}
-                        >
-                          Your browser does not support the video tag.
-                        </video>
+                        {fetchingLink === recording.id ? (
+                          <div className="flex items-center justify-center h-80 bg-neutral-900">
+                            <div className="flex flex-col items-center gap-2">
+                              <Icons.spinner color="#fff" width={24} height={24} />
+                              <p className="text-sm text-neutral-400">Loading video...</p>
+                            </div>
+                          </div>
+                        ) : recordingLinks[recording.id]?.[0]?.url ? (
+                          <>
+                            <video
+                              controls
+                              autoPlay
+                              className="w-full max-h-96"
+                              src={recordingLinks[recording.id]?.[0]?.url ?? undefined}
+                            >
+                              Your browser does not support the video tag.
+                            </video>
+                            {recordingLinks[recording.id]?.[0]?.valid_till && (
+                              <div className="p-2 bg-neutral-800 text-xs text-neutral-400">
+                                Link valid until: {new Date(recordingLinks[recording.id]?.[0]?.valid_till ?? "").toLocaleString()}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="flex items-center justify-center h-80 bg-neutral-900">
+                            <p className="text-red-400">Failed to load video</p>
+                          </div>
+                        )}
                         <div className="p-2 bg-neutral-900">
                           <Button
                             size="sm"
@@ -197,11 +282,24 @@ export default function RecordingsList() {
                         {/* Play Button */}
                         <Button
                           size="sm"
-                          onClick={() => setPlayingVideo(recording.id)}
-                          className="bg-green-600 hover:bg-green-700"
+                          onClick={async () => {
+                            await fetchRecordingLink(recording.id);
+                            setPlayingVideo(recording.id);
+                          }}
+                          disabled={fetchingLink === recording.id}
+                          className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
                         >
-                          <Icons.video width={16} height={16} className="mr-2" />
-                          Play Video
+                          {fetchingLink === recording.id ? (
+                            <>
+                              <Icons.spinner width={16} height={16} className="mr-2" />
+                              Loading...
+                            </>
+                          ) : (
+                            <>
+                              <Icons.video width={16} height={16} className="mr-2" />
+                              Play Video
+                            </>
+                          )}
                         </Button>
                         
                         {/* Download Buttons */}
@@ -209,10 +307,20 @@ export default function RecordingsList() {
                           <Button
                             key={asset.id}
                             size="sm"
-                            onClick={() => downloadRecording(asset.url, recording.id)}
+                            onClick={() => downloadRecording(recording.id, asset.type || asset.id)}
+                            disabled={fetchingLink === recording.id}
                             variant="outline"
+                            className="disabled:opacity-50"
                           >
-                            <Icons.download width={16} height={16} className="mr-2" />
+                            {fetchingLink === recording.id ? (
+                              <>
+                                <Icons.spinner width={16} height={16} className="mr-2" />
+                              </>
+                            ) : (
+                              <>
+                                <Icons.download width={16} height={16} className="mr-2" />
+                              </>
+                            )}
                             Download {asset.type}
                           </Button>
                         ))}
