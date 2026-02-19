@@ -115,8 +115,33 @@ export async function POST(req: Request) {
           data: {
             callName: call.name,
             status: "joined",
-            startTime: new Date(),
+            startTime: new Date(),            endTime: null,
           },
+        });
+
+        cookies().set("room-id", call.id);
+        cookies().set("room-name", call.name);
+
+        return new Response(JSON.stringify(participant));
+      }
+    } else {
+      // For guest users, check by username to allow rejoin
+      const guestName = body.username || userName || "Guest";
+      const existing = await prisma.participant.findFirst({
+        where: { 
+          name: guestName,
+          callId: call.id,
+        },
+      });
+
+      if (existing) {
+        participant = await prisma.participant.update({
+          where: { id: existing.id },
+          data: {
+            callName: call.name,
+            status: "joined",
+            startTime: new Date(),
+            endTime: null,          },
         });
 
         cookies().set("room-id", call.id);
