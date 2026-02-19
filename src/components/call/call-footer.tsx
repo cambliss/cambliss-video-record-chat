@@ -196,6 +196,7 @@ export default function CallFooter() {
       const isAlreadyStartedError = errorMessage.includes("Recording already started");
       const isConnectionError = errorMessage.includes("couldn't connect") || 
                                 errorMessage.includes("Meeting URL");
+      const isPermissionError = errorMessage.includes("does not have required permission");
       
       // If recording already started on HMS, sync local state with server
       if (isAlreadyStartedError) {
@@ -217,13 +218,18 @@ export default function CallFooter() {
       setIsRecording(false);
       setRecordingStartTime(undefined);
       
+      let errorDescription = "Failed to start recording. Please try again.";
+      if (isPermissionError) {
+        errorDescription = "Your role lacks recording permission. Enable 'Browser Recording' for the host role in your 100ms template.";
+      } else if (isConnectionError) {
+        errorDescription = "100ms servers cannot reach your URL. Deploy the app or use a public URL.";
+      } else if (currentlyRecording) {
+        errorDescription = "Failed to stop recording. Please try again.";
+      }
+      
       toast({
         title: "Recording failed",
-        description: isConnectionError
-          ? "100ms servers cannot reach your URL. Deploy the app or use a public URL."
-          : currentlyRecording
-          ? "Failed to stop recording. Please try again."
-          : "Failed to start recording. Please try again.",
+        description: errorDescription,
         variant: "destructive",
       });
     }
