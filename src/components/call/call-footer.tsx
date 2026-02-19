@@ -69,10 +69,10 @@ export default function CallFooter() {
       setRecordingStartTime(undefined);
     }
     
-    // Update the recording state
+    // Always sync with HMS recording state as source of truth
     setIsRecording(currentlyRecording);
     
-    // If recording just started and we don't have a start time, set it
+    // If recording is running and we don't have a start time, set it
     if (currentlyRecording && !recordingStartTime) {
       setRecordingStartTime(new Date());
     }
@@ -81,7 +81,7 @@ export default function CallFooter() {
     if (!currentlyRecording && recordingStartTime) {
       setRecordingStartTime(undefined);
     }
-  }, [recordingState]);
+  }, [recordingState, recordingStartTime, isRecording]);
 
   // 🔁 Handle screen share toggle directly on click
   const handleToggleScreenShare = async () => {
@@ -184,14 +184,30 @@ export default function CallFooter() {
     } catch (error) {
       console.error("Recording error:", error);
       
-      // Reset states on error
-      setIsRecording(false);
-      setRecordingStartTime(undefined);
-      
-      // Check if it's a connection error
       const errorMessage = error instanceof Error ? error.message : String(error);
+      const isAlreadyStartedError = errorMessage.includes("Recording already started");
       const isConnectionError = errorMessage.includes("couldn't connect") || 
                                 errorMessage.includes("Meeting URL");
+      
+      // If recording already started on HMS, sync local state with server
+      if (isAlreadyStartedError) {
+        console.log("Recording already active on HMS, syncing local state...");
+        const actualRecordingState = recordingState.browser?.running || recordingState.server?.running || false;
+        setIsRecording(actualRecordingState);
+        if (actualRecordingState && !recordingStartTime) {
+          setRecordingStartTime(new Date());
+        }
+        toast({
+          title: "Recording already active",
+          description: "This call is already being recorded.",
+          variant: "default",
+        });
+        return;
+      }
+      
+      // For other errors, reset states
+      setIsRecording(false);
+      setRecordingStartTime(undefined);
       
       toast({
         title: "Recording failed",
