@@ -47,6 +47,64 @@ export default function CallFooter() {
 
   const { copyToClipboard } = useClipboard();
 
+  // 🎥 Auto-start recording when joining call
+  React.useEffect(() => {
+    const startRecordingOnJoin = async () => {
+      // Check if already recording
+      const currentlyRecording = recordingState.browser?.running || recordingState.server?.running || false;
+      if (currentlyRecording) {
+        console.log('Recording already active, skipping auto-start');
+        return;
+      }
+
+      // Check if on localhost
+      const baseUrl = window.location.origin;
+      const isLocalhost = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1');
+      
+      if (isLocalhost) {
+        console.log('Localhost detected, skipping auto-recording');
+        return;
+      }
+
+      // Wait a bit for the call to stabilize
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      try {
+        console.log('Auto-starting recording...');
+        const meetingURL = `${baseUrl}/call/${roomId}`;
+        
+        await actions.startRTMPOrRecording({
+          meetingURL,
+          rtmpURLs: [],
+          record: true,
+        });
+
+        console.log('Recording auto-started successfully');
+        toast({
+          title: "Recording started",
+          description: "Call recording has started automatically.",
+          variant: "default",
+        });
+      } catch (error) {
+        console.error('Auto-start recording failed:', error);
+        // Don't show error toast for auto-start failure - it's optional
+      }
+    };
+
+    startRecordingOnJoin();
+
+    // Stop recording when leaving
+    return () => {
+      const currentlyRecording = recordingState.browser?.running || recordingState.server?.running || false;
+      if (currentlyRecording) {
+        console.log('Stopping recording on call exit...');
+        actions.stopRTMPAndRecording().catch(err => {
+          console.error('Failed to stop recording on exit:', err);
+        });
+      }
+    };
+  }, []); // Only run once on mount
+
   // 🎥 Update recording state when it changes
   React.useEffect(() => {
     const currentlyRecording = recordingState.browser?.running || recordingState.server?.running || false;
@@ -336,7 +394,7 @@ export default function CallFooter() {
           className={`rounded-full flex justify-center items-center py-6 px-4 ${
             isRecording ? "bg-red-600 animate-pulse" : "bg-neutral-800"
           }`}
-          title={isRecording ? "Stop Recording" : "Start Recording"}
+          title={isRecording ? "Stop Recording (Auto-recording active)" : "Start Recording (Manual override)"}
         >
           <Icons.record color="white" width={20} height={20} />
         </Button>

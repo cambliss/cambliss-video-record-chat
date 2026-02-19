@@ -26,6 +26,7 @@ export default function RecordingsList() {
   const [recordings, setRecordings] = React.useState<Recording[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [playingVideo, setPlayingVideo] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     fetchRecordings();
@@ -169,18 +170,67 @@ export default function RecordingsList() {
                 </div>
 
                 {recording.recording_assets && recording.recording_assets.length > 0 && (
-                  <div className="flex gap-2 pt-2">
-                    {recording.recording_assets.map((asset) => (
-                      <Button
-                        key={asset.id}
-                        size="sm"
-                        onClick={() => downloadRecording(asset.url, recording.id)}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        <Icons.video width={16} height={16} className="mr-2" />
-                        Download {asset.type}
-                      </Button>
-                    ))}
+                  <div className="space-y-3 pt-2">
+                    {/* Video Player */}
+                    {playingVideo === recording.id ? (
+                      <div className="rounded-lg overflow-hidden bg-black">
+                        <video
+                          controls
+                          autoPlay
+                          className="w-full max-h-96"
+                          src={recording.recording_assets[0]?.url}
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                        <div className="p-2 bg-neutral-900">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setPlayingVideo(null)}
+                          >
+                            Close Player
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 flex-wrap">
+                        {/* Play Button */}
+                        <Button
+                          size="sm"
+                          onClick={() => setPlayingVideo(recording.id)}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <Icons.video width={16} height={16} className="mr-2" />
+                          Play Video
+                        </Button>
+                        
+                        {/* Download Buttons */}
+                        {recording.recording_assets.map((asset) => (
+                          <Button
+                            key={asset.id}
+                            size="sm"
+                            onClick={() => downloadRecording(asset.url, recording.id)}
+                            variant="outline"
+                          >
+                            <Icons.download width={16} height={16} className="mr-2" />
+                            Download {asset.type}
+                          </Button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {(!recording.recording_assets || recording.recording_assets.length === 0) && recording.status === "completed" && (
+                  <div className="flex items-center gap-2 text-sm text-yellow-400 pt-2">
+                    <span>⚠️ Recording completed but video not yet available. Check back in a few minutes.</span>
+                  </div>
+                )}
+                
+                {(!recording.recording_assets || recording.recording_assets.length === 0) && recording.status === "processing" && (
+                  <div className="flex items-center gap-2 text-sm text-blue-400 pt-2">
+                    <Icons.spinner width={16} height={16} />
+                    <span>Recording is being processed...</span>
                   </div>
                 )}
               </div>
