@@ -74,6 +74,15 @@ export default function CallFooter() {
     if (currentlyRecording !== isRecording) {
       console.log(`Syncing recording state: ${isRecording} -> ${currentlyRecording}`);
       setIsRecording(currentlyRecording);
+      
+      // If HMS says recording is active but we didn't start it, show a toast
+      if (currentlyRecording && !isRecording && !recordingStartTime) {
+        toast({
+          title: "Recording detected",
+          description: "A recording is already in progress. Click the record button to stop it.",
+          variant: "default",
+        });
+      }
     }
     
     // Manage recording start time
@@ -141,16 +150,39 @@ export default function CallFooter() {
     try {
       if (currentlyRecording) {
         // Stop recording
-        console.log('Stopping recording...');
-        await actions.stopRTMPAndRecording();
-        
-        toast({
-          title: "Recording stopped",
-          description: "The recording has been stopped successfully.",
-          variant: "default",
+        console.log('Stopping recording...', {
+          browserRunning: recordingState.browser?.running,
+          serverRunning: recordingState.server?.running,
         });
         
-        console.log('Recording stopped successfully');
+        try {
+          await actions.stopRTMPAndRecording();
+          console.log('Recording stopped successfully');
+          
+          toast({
+            title: "Recording stopped",
+            description: "The recording has been stopped successfully.",
+            variant: "default",
+          });
+        } catch (stopError: any) {
+          console.error('Stop recording error:', stopError);
+          const stopErrorMsg = stopError.message || String(stopError);
+          
+          // If recording doesn't exist, just sync state
+          if (stopErrorMsg.includes("does not exist") || stopErrorMsg.includes("not found")) {
+            console.log('Recording already stopped, syncing state');
+            setIsRecording(false);
+            setRecordingStartTime(undefined);
+            toast({
+              title: "Recording cleared",
+              description: "Recording state has been reset.",
+              variant: "default",
+            });
+            return;
+          }
+          
+          throw stopError;
+        }
       } else {
         // Check if running on localhost
         const baseUrl = window.location.origin;
@@ -197,6 +229,9 @@ export default function CallFooter() {
       const isConnectionError = errorMessage.includes("couldn't connect") || 
                                 errorMessage.includes("Meeting URL");
       const isPermissionError = errorMessage.includes("does not have required permission");
+      const isNotFoundError = errorMessage.includes("does not exist") || 
+                             errorMessage.includes("not found") ||
+                             errorMessage.includes("Recording not found");
       
       // If recording already started on HMS, sync local state with server
       if (isAlreadyStartedError) {
@@ -209,6 +244,19 @@ export default function CallFooter() {
         toast({
           title: "Recording already active",
           description: "This call is already being recorded.",
+          variant: "default",
+        });
+        return;
+      }
+      
+      // If recording doesn't exist (orphaned state), clear local state
+      if (isNotFoundError) {
+        console.log("Recording doesn't exist on HMS, clearing local state...");
+        setIsRecording(false);
+        setRecordingStartTime(undefined);
+        toast({
+          title: "Recording state cleared",
+          description: "The recording was already stopped or doesn't exist.",
           variant: "default",
         });
         return;
