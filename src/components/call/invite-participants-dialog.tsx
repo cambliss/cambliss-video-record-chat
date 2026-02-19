@@ -52,6 +52,7 @@ export default function InviteParticipantsDialog(card: CardProps) {
         const res = await fetch("/api/subscription/plan", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ callId: callId }),
         });
         if (res.ok) {
@@ -63,6 +64,7 @@ export default function InviteParticipantsDialog(card: CardProps) {
         const res = await fetch("/api/call/participantCount", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ callId: callId }),
         });
         if (res.ok) {
@@ -103,6 +105,7 @@ export default function InviteParticipantsDialog(card: CardProps) {
           headers: {
             "Content-Type": "application/json",
           },
+          credentials: "include",
           body: JSON.stringify({
             recipients: [data.email],
             link: inviteLink,

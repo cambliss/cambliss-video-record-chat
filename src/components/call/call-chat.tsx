@@ -50,6 +50,7 @@ export default function CallChat({ callId }: CallChatProps) {
           headers: {
             "Content-Type": "application/json",
           },
+          credentials: "include",
           body: JSON.stringify({
             callId,
             senderName: lastMessage.senderName,

@@ -79,6 +79,7 @@ export function FileTransfer({ callId, roomId }: FileTransferProps) {
 
       const response = await fetch("/api/files/upload", {
         method: "POST",
+        credentials: "include",
         body: formData,
       });
 

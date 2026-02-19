@@ -58,7 +58,9 @@ export default function CallChatHistory() {
 
   const fetchAllCallHistory = async () => {
     try {
-      const response = await fetch("/api/account/call-history");
+      const response = await fetch("/api/account/call-history", {
+        credentials: "include",
+      });
       
       if (!response.ok) {
         throw new Error("Failed to fetch call history");

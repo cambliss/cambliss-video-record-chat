@@ -123,6 +123,7 @@ export function FileTransferEnhanced({ callId, roomId }: FileTransferEnhancedPro
 
         xhr.addEventListener("error", () => reject(new Error("Upload failed")));
         xhr.open("POST", "/api/files/upload");
+        xhr.withCredentials = true;
         xhr.send(formData);
       });
 

@@ -150,6 +150,7 @@ export default function CreateCallCard(card: CardProps) {
       headers: {
         "Content-Type": "application/json",
       },
+      credentials: "include",
       body: JSON.stringify({
         recipients,
         link: linkToSend,

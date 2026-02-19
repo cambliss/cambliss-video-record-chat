@@ -136,6 +136,7 @@ export function CallChatEnhanced({ callId, roomId }: CallChatEnhancedProps) {
     fetch("/api/chat/typing", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
       body: JSON.stringify({
         callId,
         userName: localPeer?.name || "Anonymous",
@@ -151,6 +152,7 @@ export function CallChatEnhanced({ callId, roomId }: CallChatEnhancedProps) {
       fetch("/api/chat/typing", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           callId,
           userName: localPeer?.name || "Anonymous",
@@ -180,6 +182,7 @@ export function CallChatEnhanced({ callId, roomId }: CallChatEnhancedProps) {
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(body),
       });
 
@@ -205,6 +208,7 @@ export function CallChatEnhanced({ callId, roomId }: CallChatEnhancedProps) {
       await fetch("/api/chat/react", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           messageId,
           emoji,
@@ -223,6 +227,7 @@ export function CallChatEnhanced({ callId, roomId }: CallChatEnhancedProps) {
       await fetch("/api/chat/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ messageId }),
       });
     } catch (error) {

@@ -34,7 +34,9 @@ export default function RecordingsList() {
   const fetchRecordings = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/recordings");
+      const response = await fetch("/api/recordings", {
+        credentials: "include",
+      });
       
       if (!response.ok) {
         throw new Error("Failed to fetch recordings");
