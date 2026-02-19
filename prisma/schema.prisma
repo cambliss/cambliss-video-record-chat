@@ -144,3 +144,192 @@ model Subscription {
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 }
+
+// -------------- CHAT & FILE TRANSFER --------------
+
+model ChatMessage {
+  id          String   @id @default(cuid())
+  callId      String
+  
+  senderName  String
+  senderEmail String?
+  message     String   @db.Text
+  
+  isEdited    Boolean  @default(false)
+  editedAt    DateTime?
+  isDeleted   Boolean  @default(false)
+  deletedAt   DateTime?
+  
+  replyToId   String?  // For threaded replies
+  replyTo     ChatMessage? @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies     ChatMessage[] @relation("MessageReplies")
+  
+  reactions   MessageReaction[]
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([callId])
+  @@index([replyToId])
+}
+
+model MessageReaction {
+  id          String   @id @default(cuid())
+  messageId   String
+  message     ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  
+  emoji       String   // 👍, ❤️, 😂, etc.
+  userName    String
+  userEmail   String?
+  
+  createdAt   DateTime @default(now())
+  
+  @@unique([messageId, emoji, userEmail])
+  @@index([messageId])
+}
+
+model FileTransfer {
+  id          String   @id @default(cuid())
+  callId      String
+  senderName  String
+  senderEmail String?
+  fileName    String
+  fileSize    Int
+  fileType    String
+  filePath    String
+  
+  thumbnailPath String?  // For image previews
+  isPreviewable Boolean  @default(false)
+  
+  downloadCount Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([callId])
+}
+
+// -------------- NOTIFICATIONS --------------
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  
+  type        String   // "CALL_MISSED", "FILE_SHARED", "MENTION", "REACTION"
+  title       String
+  message     String   @db.Text
+  
+  callId      String?
+  relatedId   String?  // Related message/file ID
+  
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([userId, isRead])
+  @@index([callId])
+}
+
+// -------------- ANALYTICS --------------
+
+model CallAnalytics {
+  id          String   @id @default(cuid())
+  callId      String   @unique
+  
+  duration    Int      // in seconds
+  
+  peakParticipants    Int  @default(0)
+  totalParticipants   Int  @default(0)
+  
+  messageCount        Int  @default(0)
+  fileCount           Int  @default(0)
+  
+  screenShareDuration Int  @default(0) // in seconds
+  recordingDuration   Int  @default(0) // in seconds
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([callId])
+}
+
+// -------------- RECORDINGS --------------
+
+model Recording {
+  id          String   @id @default(cuid())
+  callId      String
+  
+  fileName    String
+  fileSize    Int
+  filePath    String
+  duration    Int      // in seconds
+  
+  thumbnailPath  String?
+  transcriptPath String?
+  
+  s3Key       String?  // For cloud storage
+  cloudUrl    String?
+  
+  isProcessed Boolean  @default(false)
+  isPublic    Boolean  @default(false)
+  
+  shareToken  String?  @unique
+  expiresAt   DateTime?
+  
+  views       Int      @default(0)
+  downloads   Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([callId])
+  @@index([shareToken])
+}
+
+// -------------- CALL SECURITY --------------
+
+model CallSecurity {
+  id          String   @id @default(cuid())
+  callId      String   @unique
+  
+  isPasswordProtected Boolean @default(false)
+  password   String?
+  
+  isWaitingRoomEnabled Boolean @default(false)
+  requireApproval      Boolean @default(false)
+  
+  allowedEmails String[] // Array of allowed email addresses
+  blockedUsers  String[] // Array of blocked user emails
+  
+  recordingConsent Boolean @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([callId])
+}
+
+// -------------- CALL SETTINGS --------------
+
+model CallSettings {
+  id          String   @id @default(cuid())
+  callId      String   @unique
+  
+  maxDuration Int?     // in minutes
+  autoRecording Boolean @default(false)
+  
+  chatEnabled Boolean  @default(true)
+  fileShareEnabled Boolean @default(true)
+  screenShareEnabled Boolean @default(true)
+  
+  virtualBackgroundEnabled Boolean @default(false)
+  noiseSuppression Boolean @default(false)
+  
+  breakoutRoomsEnabled Boolean @default(false)
+  pollsEnabled Boolean @default(false)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([callId])
+}

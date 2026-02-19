@@ -33,6 +33,22 @@ export async function POST(req: Request) {
       throw new Error("You must be logged in to create a call");
     }
 
+    // Ensure user exists in database (create if missing)
+    await prisma.user.upsert({
+      where: { id: user.id },
+      update: {
+        name: user.name,
+        email: user.email,
+        image: user.image || null,
+      },
+      create: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        image: user.image || null,
+      },
+    });
+
     const json: CallCreateBody = (await req.json()) as CallCreateBody;
     const body = callCreateSchema.parse(json);
 

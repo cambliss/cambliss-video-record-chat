@@ -19,7 +19,11 @@ interface ChatMessage {
   senderId?: string;
 }
 
-export default function CallChat() {
+interface CallChatProps {
+  callId: string;
+}
+
+export default function CallChat({ callId }: CallChatProps) {
   const hmsActions = useHMSActions();
   const messages = useHMSStore(selectHMSMessages);
   const localPeer = useHMSStore(selectLocalPeer);
@@ -32,6 +36,32 @@ export default function CallChat() {
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Save new messages to database
+  React.useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      
+      // Only save if lastMessage exists and has required properties
+      if (lastMessage?.message && lastMessage?.senderName) {
+        // Save to database (fire and forget)
+        fetch("/api/chat/save", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            callId,
+            senderName: lastMessage.senderName,
+            senderEmail: lastMessage.senderUserId || null,
+            message: lastMessage.message,
+          }),
+        }).catch((error) => {
+          console.error("Failed to save message to database:", error);
+        });
+      }
+    }
+  }, [messages, callId]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

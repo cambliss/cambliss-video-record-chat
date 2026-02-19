@@ -19,8 +19,9 @@ import { Icons } from "../ui/icons";
 import { Button } from "../ui/button";
 import { useToast } from "../ui/use-toast";
 import RejoinCall from "./rejoin-call";
-import CallChat from "./call-chat";
+import { CallChatEnhanced } from "./call-chat-enhanced";
 import RecordingTimer from "./recording-timer";
+import { FileTransferEnhanced } from "./file-transfer-enhanced";
 
 export default function CallFooter() {
   const {
@@ -42,6 +43,7 @@ export default function CallFooter() {
   const params = useParams();
   const roomId = Cookies.get("room-id");
   const roomName = Cookies.get("room-name");
+  const [showFileTransfer, setShowFileTransfer] = React.useState(false);
 
   const { copyToClipboard } = useClipboard();
 
@@ -260,8 +262,19 @@ export default function CallFooter() {
           <Icons.record color="white" width={20} height={20} />
         </Button>
 
-        {/* Chat */}
-        <CallChat />
+        {/* Chat with Reactions, Threading, Edit/Delete */}
+        <CallChatEnhanced callId={roomId || "unknown"} roomId={roomId || "unknown"} />
+
+        {/* File Transfer */}
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => setShowFileTransfer(!showFileTransfer)}
+          className="rounded-full flex justify-center items-center py-6 px-4 bg-neutral-800"
+          title="File Transfer"
+        >
+          <Icons.file color="white" width={20} height={20} />
+        </Button>
 
         {/* Copy invite link */}
         <Button
@@ -289,6 +302,14 @@ export default function CallFooter() {
       <span className="text-xs text-neutral-400 font-semibold uppercase tracking-wide">
         Cambliss
       </span>
+
+      {/* File Transfer Panel with Drag & Drop, Progress, Preview */}
+      {showFileTransfer && roomId && (
+        <FileTransferEnhanced 
+          callId={roomId}
+          roomId={roomId}
+        />
+      )}
 
       {showRejoinPopup && (
         <RejoinCall

@@ -34,6 +34,22 @@ export async function POST(req: Request) {
         userId = user.id;
         userName = user.name;
         userEmail = user.email;
+
+        // Ensure user exists in database (create if missing)
+        await prisma.user.upsert({
+          where: { id: user.id },
+          update: {
+            name: user.name,
+            email: user.email,
+            image: user.image || null,
+          },
+          create: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            image: user.image || null,
+          },
+        });
       }
     }
 

@@ -68,6 +68,12 @@ export default function UserAccountDropdown({ user }: DropdownProps) {
               Recordings
             </DropdownMenuItem>
           </Link>
+          <Link href="/call-history">
+            <DropdownMenuItem className="cursor-pointer text-yellow-400 focus:bg-yellow-400/10">
+              <Icons.message width="16" height="16" className="mr-2" />
+              Call History
+            </DropdownMenuItem>
+          </Link>
           <Link href="/settings">
             <DropdownMenuItem className="cursor-pointer text-yellow-400 focus:bg-yellow-400/10">
               <Icons.settings width="16" height="16" className="mr-2" />
