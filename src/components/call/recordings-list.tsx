@@ -29,6 +29,19 @@ interface RecordingLink {
   valid_till?: string;
 }
 
+const isVideoLink = (link: Pick<RecordingLink, "type" | "url">) => {
+  const type = (link.type ?? "").toLowerCase();
+  const url = (link.url ?? "").toLowerCase();
+
+  return (
+    type.includes("room-composite") ||
+    type.includes("video") ||
+    type.includes("stream") ||
+    url.includes(".mp4") ||
+    url.includes(".m3u8")
+  );
+};
+
 const normalizeLinks = (payload: any): RecordingLink[] => {
   const source = payload?.data ?? payload?.links ?? payload;
 
@@ -38,7 +51,7 @@ const normalizeLinks = (payload: any): RecordingLink[] => {
       type: item.type || item.id || "video",
       url: item.url,
       valid_till: item.valid_till,
-    }));
+    })).filter(isVideoLink);
   }
 
   if (source && typeof source === "object") {
@@ -48,7 +61,7 @@ const normalizeLinks = (payload: any): RecordingLink[] => {
         type: source.type || source.id || "video",
         url: source.url,
         valid_till: source.valid_till,
-      }];
+      }].filter(isVideoLink);
     }
 
     const values = Object.values(source).filter((value: any) => value?.url);
@@ -57,7 +70,7 @@ const normalizeLinks = (payload: any): RecordingLink[] => {
       type: value.type || value.id || "video",
       url: value.url,
       valid_till: value.valid_till,
-    }));
+    })).filter(isVideoLink);
   }
 
   return [];
@@ -382,7 +395,7 @@ export default function RecordingsList() {
                                   <Icons.download width={16} height={16} className="mr-2" />
                                 </>
                               )}
-                              Download {asset.type}
+                              Download Video
                             </Button>
                           ))
                         ) : (

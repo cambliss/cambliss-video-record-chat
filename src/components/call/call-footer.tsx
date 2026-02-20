@@ -39,6 +39,7 @@ export default function CallFooter() {
   const [showRejoinPopup, setShowRejoinPopup] = React.useState(false);
   const [isRecording, setIsRecording] = React.useState(false);
   const [recordingStartTime, setRecordingStartTime] = React.useState<Date | undefined>();
+  const ignoreHmsRecordingUntilRef = React.useRef<number>(0);
 
   const params = useParams();
   const roomId = Cookies.get("room-id");
@@ -109,6 +110,7 @@ export default function CallFooter() {
   React.useEffect(() => {
     const currentlyRecording = recordingState.browser?.running || recordingState.server?.running || false;
     const hasError = recordingState.browser?.error || recordingState.server?.error;
+    const isInIgnoreWindow = Date.now() < ignoreHmsRecordingUntilRef.current;
     
     console.log('Recording state update:', {
       browser: recordingState.browser?.running,
@@ -129,6 +131,11 @@ export default function CallFooter() {
     }
     
     // Sync local state with HMS (source of truth)
+    if (isInIgnoreWindow && currentlyRecording) {
+      console.log("Ignoring stale HMS recording=true after local stop");
+      return;
+    }
+
     if (currentlyRecording !== isRecording) {
       console.log(`Syncing recording state: ${isRecording} -> ${currentlyRecording}`);
       setIsRecording(currentlyRecording);
@@ -216,6 +223,11 @@ export default function CallFooter() {
         try {
           await actions.stopRTMPAndRecording();
           console.log('Recording stopped successfully');
+
+          // Optimistic local sync so timer/UI stop immediately
+          ignoreHmsRecordingUntilRef.current = Date.now() + 12000;
+          setIsRecording(false);
+          setRecordingStartTime(undefined);
           
           toast({
             title: "Recording stopped",
