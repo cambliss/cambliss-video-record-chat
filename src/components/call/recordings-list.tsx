@@ -29,6 +29,40 @@ interface RecordingLink {
   valid_till?: string;
 }
 
+const normalizeLinks = (payload: any): RecordingLink[] => {
+  const source = payload?.data ?? payload?.links ?? payload;
+
+  if (Array.isArray(source)) {
+    return source.filter((item) => item?.url).map((item) => ({
+      id: item.id || item.type || "asset",
+      type: item.type || item.id || "video",
+      url: item.url,
+      valid_till: item.valid_till,
+    }));
+  }
+
+  if (source && typeof source === "object") {
+    if (typeof source.url === "string") {
+      return [{
+        id: source.id || source.type || "asset",
+        type: source.type || source.id || "video",
+        url: source.url,
+        valid_till: source.valid_till,
+      }];
+    }
+
+    const values = Object.values(source).filter((value: any) => value?.url);
+    return values.map((value: any) => ({
+      id: value.id || value.type || "asset",
+      type: value.type || value.id || "video",
+      url: value.url,
+      valid_till: value.valid_till,
+    }));
+  }
+
+  return [];
+};
+
 export default function RecordingsList() {
   const [recordings, setRecordings] = React.useState<Recording[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -84,7 +118,7 @@ export default function RecordingsList() {
         throw new Error(message);
       }
 
-      const links = (data.data || data.links || [data]) as RecordingLink[];
+      const links = normalizeLinks(data);
 
       if (!Array.isArray(links) || links.length === 0 || !links[0]?.url) {
         throw new Error("No downloadable links returned yet. Please wait 1-2 minutes and refresh.");
@@ -153,7 +187,7 @@ export default function RecordingsList() {
       // Find the correct asset link
       const assetLink = links.find(
         (link: RecordingLink) => link.type === assetType || link.id === assetType
-      );
+      ) || links[0];
 
       if (!assetLink || !assetLink.url) {
         setRecordingErrors((prev) => ({
@@ -260,7 +294,7 @@ export default function RecordingsList() {
                   </div>
                 </div>
 
-                {recording.recording_assets && recording.recording_assets.length > 0 && (
+                {recording.status === "completed" && (
                   <div className="space-y-3 pt-2">
                     {/* Video Player */}
                     {playingVideo === recording.id ? (
@@ -329,11 +363,40 @@ export default function RecordingsList() {
                         </Button>
                         
                         {/* Download Buttons */}
-                        {recording.recording_assets.map((asset) => (
+                        {(recordingLinks[recording.id] ?? []).length ? (
+                          (recordingLinks[recording.id] ?? []).map((asset) => (
+                            <Button
+                              key={`${recording.id}-${asset.id}-${asset.type}`}
+                              size="sm"
+                              onClick={() => downloadRecording(recording.id, asset.type || asset.id)}
+                              disabled={fetchingLink === recording.id}
+                              variant="outline"
+                              className="disabled:opacity-50"
+                            >
+                              {fetchingLink === recording.id ? (
+                                <>
+                                  <Icons.spinner width={16} height={16} className="mr-2" />
+                                </>
+                              ) : (
+                                <>
+                                  <Icons.download width={16} height={16} className="mr-2" />
+                                </>
+                              )}
+                              Download {asset.type}
+                            </Button>
+                          ))
+                        ) : (
                           <Button
-                            key={asset.id}
                             size="sm"
-                            onClick={() => downloadRecording(recording.id, asset.type || asset.id)}
+                            onClick={async () => {
+                              try {
+                                const links = await fetchRecordingLink(recording.id);
+                                if (links.length > 0) {
+                                  await downloadRecording(recording.id, links[0]?.type || links[0]?.id || "video");
+                                }
+                              } catch {
+                              }
+                            }}
                             disabled={fetchingLink === recording.id}
                             variant="outline"
                             className="disabled:opacity-50"
@@ -347,9 +410,9 @@ export default function RecordingsList() {
                                 <Icons.download width={16} height={16} className="mr-2" />
                               </>
                             )}
-                            Download {asset.type}
+                            Fetch & Download
                           </Button>
-                        ))}
+                        )}
                       </div>
                     )}
                   </div>
@@ -357,7 +420,7 @@ export default function RecordingsList() {
                 
                 {(!recording.recording_assets || recording.recording_assets.length === 0) && recording.status === "completed" && (
                   <div className="flex items-center gap-2 text-sm text-yellow-400 pt-2">
-                    <span>⚠️ Recording completed but video not yet available. Check back in a few minutes.</span>
+                    <span>⚠️ Recording completed. If links are missing, click Play Video or Fetch & Download to request fresh links.</span>
                   </div>
                 )}
                 
