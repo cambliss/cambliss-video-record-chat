@@ -33,6 +33,7 @@ export default function RecordingsList() {
   const [recordings, setRecordings] = React.useState<Recording[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [recordingErrors, setRecordingErrors] = React.useState<Record<string, string>>({});
   const [playingVideo, setPlayingVideo] = React.useState<string | null>(null);
   const [fetchingLink, setFetchingLink] = React.useState<string | null>(null);
   const [recordingLinks, setRecordingLinks] = React.useState<Record<string, RecordingLink[]>>({});
@@ -65,26 +66,42 @@ export default function RecordingsList() {
   const fetchRecordingLink = async (recordingId: string): Promise<RecordingLink[]> => {
     try {
       setFetchingLink(recordingId);
+      setRecordingErrors((prev) => ({ ...prev, [recordingId]: "" }));
       const response = await fetch(`/api/recordings/link?recordingId=${recordingId}`, {
         credentials: "include",
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch recording links");
+      const raw = await response.text();
+      let data: any = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = { raw };
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        const message = data?.error || data?.details || raw || "Failed to fetch recording links";
+        throw new Error(message);
+      }
+
       const links = (data.data || data.links || [data]) as RecordingLink[];
+
+      if (!Array.isArray(links) || links.length === 0 || !links[0]?.url) {
+        throw new Error("No downloadable links returned yet. Please wait 1-2 minutes and refresh.");
+      }
       
       // Store the links with validity information
       setRecordingLinks((prev) => ({
         ...prev,
         [recordingId]: links,
       }));
+      setRecordingErrors((prev) => ({ ...prev, [recordingId]: "" }));
 
       return links;
     } catch (err) {
       console.error("Error fetching recording link:", err);
+      const message = err instanceof Error ? err.message : "Error fetching recording link";
+      setRecordingErrors((prev) => ({ ...prev, [recordingId]: message }));
       throw err;
     } finally {
       setFetchingLink(null);
@@ -118,6 +135,7 @@ export default function RecordingsList() {
 
   const downloadRecording = async (recordingId: string, assetType: string) => {
     try {
+      setRecordingErrors((prev) => ({ ...prev, [recordingId]: "" }));
       // Fetch fresh link before downloading
       let links: RecordingLink[] | undefined = recordingLinks[recordingId];
       if (!links) {
@@ -125,7 +143,10 @@ export default function RecordingsList() {
       }
 
       if (!links || links.length === 0) {
-        console.error("No recording links available");
+        setRecordingErrors((prev) => ({
+          ...prev,
+          [recordingId]: "No recording links available yet. Try again in 1-2 minutes.",
+        }));
         return;
       }
 
@@ -135,7 +156,10 @@ export default function RecordingsList() {
       );
 
       if (!assetLink || !assetLink.url) {
-        console.error("No download URL available");
+        setRecordingErrors((prev) => ({
+          ...prev,
+          [recordingId]: "No download URL found for this recording asset.",
+        }));
         return;
       }
 
@@ -149,6 +173,8 @@ export default function RecordingsList() {
       document.body.removeChild(link);
     } catch (err) {
       console.error("Error downloading recording:", err);
+      const message = err instanceof Error ? err.message : "Error downloading recording";
+      setRecordingErrors((prev) => ({ ...prev, [recordingId]: message }));
     }
   };
 
@@ -339,6 +365,12 @@ export default function RecordingsList() {
                   <div className="flex items-center gap-2 text-sm text-blue-400 pt-2">
                     <Icons.spinner width={16} height={16} />
                     <span>Recording is being processed...</span>
+                  </div>
+                )}
+
+                {!!recordingErrors[recording.id] && (
+                  <div className="mt-3 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-300">
+                    {recordingErrors[recording.id]}
                   </div>
                 )}
               </div>

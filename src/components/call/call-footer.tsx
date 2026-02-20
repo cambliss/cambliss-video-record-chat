@@ -71,7 +71,7 @@ export default function CallFooter() {
 
       try {
         console.log('Auto-starting recording...');
-        const meetingURL = `${baseUrl}/call/${roomId}`;
+        const meetingURL = `${baseUrl}/preview/${roomId}?autoJoin=1&name=${encodeURIComponent("Recorder Bot")}`;
         
         await actions.startRTMPOrRecording({
           meetingURL,
@@ -257,7 +257,7 @@ export default function CallFooter() {
         
         // Start recording - using browser recording
         console.log('Starting recording...');
-        const meetingURL = `${baseUrl}/call/${roomId}`;
+        const meetingURL = `${baseUrl}/preview/${roomId}?autoJoin=1&name=${encodeURIComponent("Recorder Bot")}`;
         
         console.log('Recording config:', {
           meetingURL,

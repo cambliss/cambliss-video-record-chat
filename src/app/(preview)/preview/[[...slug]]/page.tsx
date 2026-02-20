@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { type z } from "zod";
 import { previewJoinSchema } from "~/schemas/join";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import React from "react";
 import Cookies from "js-cookie";
 import { Button } from "~/components/ui/button";
@@ -26,7 +26,9 @@ export default function CallPreviewPage() {
     resolver: zodResolver(previewJoinSchema),
   });
   const params = useParams();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
+  const hasAutoJoinedRef = React.useRef(false);
 
   async function joinCall(data: FormData) {
     try {
@@ -87,6 +89,18 @@ export default function CallPreviewPage() {
       });
     }
   }
+
+  React.useEffect(() => {
+    const autoJoin = searchParams.get("autoJoin");
+    const autoName = searchParams.get("name")?.trim();
+
+    if (autoJoin !== "1" || !autoName || hasAutoJoinedRef.current) {
+      return;
+    }
+
+    hasAutoJoinedRef.current = true;
+    void joinCall({ name: autoName });
+  }, [searchParams]);
 
   return (
     <section className="w-full max-w-7xl flex justify-center items-center sm:-mt-20 mx-auto">
